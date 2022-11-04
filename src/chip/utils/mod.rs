@@ -1,6 +1,9 @@
+mod lexer;
+pub use lexer::{ Lexer, Token};
+
 pub fn fontset()->[u8; 180]{
     return [
-        0xf9, 0x90, 0x90, 0x90, 0xf0,   // 0
+        0xf0, 0x90, 0x90, 0x90, 0xf0,   // 0
         0x20, 0x60, 0x20, 0x20, 0x70,   // 1
         0xf0, 0x10, 0xf0, 0x80, 0xf0,   // 2
         0xf0, 0x10, 0xf0, 0x10, 0xf0,   // 3
@@ -29,4 +32,42 @@ pub fn fontset()->[u8; 180]{
         0x3C, 0x7E, 0xC3, 0xC3, 0x7E, 0x7E, 0xC3, 0xC3, 0x7E, 0x3C,
         0x3C, 0x7E, 0xC3, 0xC3, 0x7F, 0x3F, 0x03, 0x03, 0x3E, 0x7C
     ];
+}
+
+pub fn hex(value: u16)->String{
+    let mut init = value;
+    let mut builder = String::new();
+    while init > 0{
+        let ch = format!("{}", init % 16);
+        builder.insert_str(0, match ch.as_ref(){
+            "10" => "A",
+            "11" => "B",
+            "12" => "C",
+            "13" => "D",
+            "14" => "E",
+            "15" => "F",
+            __ => ch.as_ref()
+        });
+        init /= 16;
+    }
+    return if builder.is_empty() { String::from("0") } else { builder };
+}
+
+pub fn from_hex(numb: &str)->u16{
+    if numb.contains("0x") || numb.contains("0b"){
+        let mut number: u16 = 0;
+        for i in 2..numb.len(){
+            let mut value = numb.chars().nth(i).unwrap() as u16;
+            if value >= 65 && value <= 70{
+                value -= 55;
+            }else if value >= 97 && value <= 102{
+                value -= 87;
+            }else if value >= 48 && value <= 57{
+                value -= 48;
+            }
+            number += value * u32::pow( if numb.contains("0x") { 16 } else { 2 }, (numb.len() - i - 1 ) as u32) as u16;
+        }
+        return number;   
+    }
+    return numb.parse().unwrap(); 
 }

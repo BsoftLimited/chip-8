@@ -1,25 +1,6 @@
+use crate::chip::utils::hex;
 use std::fmt::{ Error, Formatter, Display};
 use std::ops::{ BitXor, BitOr, BitAnd };
-
-
-pub fn hex(value: u16)->String{
-    let mut init = value;
-    let mut builder = String::new();
-    while init > 0{
-        let ch = format!("{}", init % 16);
-        builder.insert_str(0, match ch.as_ref(){
-            "10" => "A",
-            "11" => "B",
-            "12" => "C",
-            "13" => "D",
-            "14" => "E",
-            "15" => "F",
-            __ => ch.as_ref()
-        });
-        init /= 16;
-    }
-    return if builder.is_empty() { String::from("0") } else { builder };
-}
 
 pub struct Opcode{ code: u16 }
 impl Opcode{
@@ -67,7 +48,7 @@ impl Opcode{
             0xa000 => return format!("LD I, {}", hex(self.nnn())),          // set i = nnn
             0xb000 => return format!("JP V0, {}", hex(self.nnn())),
             0xc000 => return format!("RND V{}, {}", hex(self.x() as u16), hex(self.kk())),       // vx = random byte and kk
-            0xd000 => return format!("DRW V{}, V{}, {}", hex(self.x() as u16), hex(self.y() as u16), hex(self.kk())), //display n-byte sprite starting at memory location I at (vx/vy), set vf=collision
+            0xd000 => return format!("DRW V{}, V{}, {}", hex(self.x() as u16), hex(self.y() as u16), hex(self.n())), //display n-byte sprite starting at memory location I at (vx/vy), set vf=collision
             0xe000 =>{ 
                 match self.code & 0x000f{
                     0x000e => return format!("SKP V{}", hex(self.x() as u16)), // skip new instruction if keys with the value of vx is pressed

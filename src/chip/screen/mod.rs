@@ -73,14 +73,17 @@ impl Screen{
 
     pub fn draw(&mut self, x: u16, y: u16, sprite:Vec<u16>)->u8{
         let mut vf = 0;
-
         for yline in 0..sprite.len(){
             for xline in 0..8{
                 if (sprite[yline] & (0x80 >> xline)) != 0{
-                    if self.pixels[y as usize + sprite.len()][x as usize + xline] && vf == 0{
+                    let (mut screen_x, mut screen_y) = (x as usize + xline, y as usize + yline);
+                    while screen_x >= 64{ screen_x -= 64; }
+                    while screen_y >= 32{ screen_y -= 32; }
+
+                    if self.pixels[screen_y][screen_x] && vf == 0{
                         vf = 1;                   
                     }
-                    self.pixels[y as usize + sprite.len()][x as usize + xline] ^= true;
+                    self.pixels[screen_y][screen_x] ^= true;
                 }
             }
         }

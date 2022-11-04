@@ -1,4 +1,4 @@
-use crate::compiler::Opcode;
+use crate::chip::compiler::Opcode;
 use crate::chip::screen::renderer::Disposable;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
@@ -23,8 +23,14 @@ use memory::Memory;
 mod keys;
 use keys::KeyPad;
 
-mod utils;
-pub use utils::fontset;
+mod compiler;
+pub use compiler::Compiler; 
+
+mod assembler;
+pub use assembler::Assemblier;
+
+pub mod utils;
+
 
 static mut DELTA_TIME: f64 = 0.0;
 static mut LAST_TIME:f64 = 0.0;
@@ -55,8 +61,17 @@ impl Chip{
         match &mut File::open(rom){
             Ok(file) =>{
                 let mut init: Vec<u8> = Vec::new();
-                if let Err(error) = file.read_to_end(init.as_mut()){
-                    panic!("{}", error);
+                if rom.ends_with(".c8"){
+                    if let Err(error) = file.read_to_end(init.as_mut()){
+                        panic!("{}", error);
+                    }
+                }else if rom.ends_with(".asm"){
+                    let mut data = String::new();
+                    if let Err(error) = file.read_to_string(&mut data){
+                        panic!("{}", error);
+                    }
+                    let mut assembler = Assemblier::new(data.as_ref());
+                    init = assembler.run();
                 }
                 self.memory.load(init.as_ref());
                 self.loaded = true;
@@ -71,7 +86,6 @@ impl Chip{
 
     pub fn run(&mut self)-> bool {
         let opcode:Opcode  = Opcode::new(self.cpu.fetch(self.memory.as_ref()));
-        println!("{}", opcode.dessemble());
         match &opcode & 0xf000{
             0x0000 =>{
                 match &opcode & 0x00ff{

@@ -333,7 +333,8 @@ impl CPU{
 
         let mut sprite: Vec<u16> = Vec::new();
         for i in 0..opcode.n(){
-            sprite.push(memory.get(self.i as usize + i as usize) as u16); 
+            let init = memory.get((self.i + i) as usize) as u16;
+            sprite.push(init); 
         }
         self.registers.v[0xf] = screen.draw(self.registers.v[x] as u16 , self.registers.v[y] as u16, sprite);
         self.pc += 2;

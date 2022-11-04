@@ -1,4 +1,4 @@
-use crate::chip::fontset;
+use crate::chip::utils::fontset;
 
 pub struct Memory{ memory: [u8; 4096] }
 

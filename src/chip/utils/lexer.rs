@@ -16,8 +16,7 @@ impl Lexer{
     pub fn has_next(&mut self)->bool{
         while self.index < self.data.len(){
             self.current = self.data.chars().nth(self.index).unwrap();
-            let passable = (self.current == ' ') || (self.current == '\n') || (self.current == '\t');
-            if ! passable { return true; }
+            if ! self.current.is_whitespace(){ return true; }
             self.index += 1;
         }
         return false;
@@ -60,14 +59,12 @@ impl Lexer{
 
 	fn get_name_token(&mut self)->Result<Token, String>{
 		let mut builder = String::new();
-		
-		loop{
-			builder.push(self.pop());
-			if self.index < self.data.len(){
-				self.current = self.data.chars().nth(self.index).unwrap();
-				if !self.current.is_alphanumeric(){ break;}
-			}
-		}
+		while self.index < self.data.len(){
+            self.current = self.data.chars().nth(self.index).unwrap();
+            let passable = !self.current.is_alphanumeric() || (self.current == ',');
+            if passable { break; }else { builder.push(self.current); }
+            self.index += 1;
+        }
 
 		if builder.eq("true") || builder.eq("false"){
 			return Ok(Token::Boolean(builder));
@@ -77,13 +74,12 @@ impl Lexer{
 
 	fn get_number_token(&mut self)->Result<Token, String>{
 		let mut builder = String::new();
-		loop{
-			builder.push(self.pop());
-			if self.index < self.data.len(){
-				self.current = self.data.chars().nth(self.index).unwrap();
-				if !self.current.is_numeric(){ break;}
-			}
-		}
+		while self.index < self.data.len(){
+            self.current = self.data.chars().nth(self.index).unwrap();
+            let important = !self.current.is_ascii_whitespace() && (self.current.is_ascii_hexdigit() || (self.current != ',') || (self.current == 'x'));
+            if important { builder.push(self.current); } else { break; };
+            self.index += 1;
+        }
 		return Ok(Token::Number(builder));
 	}
 	
