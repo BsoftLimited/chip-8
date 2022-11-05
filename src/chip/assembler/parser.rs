@@ -101,7 +101,7 @@ impl Parser{
                 if step == 0 && !is_nemonic(&value){
                     name = Some(value.clone());
                     step = 1;
-                }if step == 2 && (value.eq_ignore_ascii_case("sprite") || value.eq_ignore_ascii_case("commands")){
+                }if step == 2 && ["sprite", "commands", "text"].contains(&value.as_str()) {
                     subtype = Some(value.clone());
                     step = 3;
                 }

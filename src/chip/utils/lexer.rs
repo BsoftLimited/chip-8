@@ -5,18 +5,22 @@ pub enum Token{
 	ForwardSlash, OpenSquareBracket, ClosingSquareBracket, Term(char), Factor(char),
 	OpenCurlyBracket, ClosingCurlyBracket, OpenBracket, ClosingBracket, Colon, SemiColon, Coma, Equal, Dot, None}
 
-pub struct Lexer{ index:usize, current:char, data: String }
+pub struct Lexer{ index:usize, current:char, data: String, to_newline: bool }
 impl Lexer{
     pub fn new(data:&str)->Self{
         let string = String::from(data);
         let init = string.chars().nth(0).unwrap();
-        Lexer{ index:0, current:init, data: string, }
+        Lexer{ index:0, current:init, data: string, to_newline: false }
     }
     
     pub fn has_next(&mut self)->bool{
         while self.index < self.data.len(){
             self.current = self.data.chars().nth(self.index).unwrap();
-            if ! self.current.is_whitespace(){ return true; }
+			if self.to_newline && self.current == '\n'{
+				self.to_newline = false;
+			}else if !self.to_newline && !self.current.is_whitespace(){
+				return true; 
+			} 
             self.index += 1;
         }
         return false;
@@ -46,7 +50,18 @@ impl Lexer{
 			':' => { self.pop(); return Ok(Token::Colon); }
 			';' => { self.pop(); return Ok(Token::SemiColon); }
 			',' => { self.pop(); return Ok(Token::Coma); }
-			'/' => return Ok(Token::Factor(self.pop())),
+			'/' => {
+				let init = self.pop();
+				if self.index < self.data.len(){
+					let next = self.data.chars().nth(self.index).unwrap();
+					if next == '/'{
+						self.to_newline = true;
+						self.has_next();
+						return self.get_next_token();
+					}
+				}
+				return Ok(Token::Factor(init));
+			},
 			'*' => return Ok(Token::Factor(self.pop())),
 			'+' => return Ok(Token::Term(self.pop())),
 			'-' => return Ok(Token::Term(self.pop())),

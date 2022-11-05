@@ -1,5 +1,7 @@
 start.commands:
-    CLR
+    CLR  // clear screen
+
+    //print b
     LD V6, 0x25
     LD V7, 0x14
     LD V8, 0xB
