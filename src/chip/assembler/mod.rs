@@ -18,8 +18,10 @@ impl Assemblier{
                 println!("{}: {}", hex(code), opcode.dessemble());
                 codes.push(((code & 0xff00) >> 8) as u8);
                 codes.push((code & 0x00ff) as u8);
-            }else if let Expression::Subroutine(name) = init{
-                println!("Subroutine: {}", name);
+            }else if let Expression::Subroutine{name, subtype} = init{
+                println!("Subroutine: name {}, type:{}", name, subtype);
+            }else if let Expression::Sprite(data) = init{
+                println!("Sprite: name {:?}", data);
             }
         }
         return codes;

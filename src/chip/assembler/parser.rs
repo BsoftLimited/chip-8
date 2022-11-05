@@ -22,7 +22,7 @@ fn v_value(code: &str)->u16{
 
 #[derive(Debug)]
 pub enum Expression{
-    Opcode(u16), Jump{ nemode: u16, address: String}, Subroutine(String), None
+    Opcode(u16), Jump{ nemode: u16, address: String}, Subroutine{ subtype: String, name :String}, Sprite(Vec<u16>), None
 }
 
 pub struct Parser{ lexer:Box<Lexer>, errors: Vec<String> , current: Token }
@@ -76,6 +76,8 @@ impl Parser{
                     "LD"    => return self.init_load(),
                     _ => return self.init_subroutine(),
                 }
+            }else if let Token::Number(_) = &self.current{
+                return self.init_sprite();
             }
             let token = self.pop_token();
             self.errors.push(format!("Unexpected token: {:?}", token));
@@ -83,17 +85,33 @@ impl Parser{
         return Expression::None;
     }
 
+    fn init_sprite(&mut self)->Expression{
+        let mut init: Vec<u16> = Vec::new();
+        while let Token::Number(value) = &self.current{
+            init.push(from_hex(value));
+            self.next_token();
+        }
+        return Expression::Sprite(init);
+    }
+
     fn init_subroutine(&mut self)->Expression{
-        let (mut step, mut name): (u16, Option<String>) = ( 0, None);
+        let (mut step, mut name, mut subtype): (u16, Option<String>, Option<String>) = ( 0, None, None);
         loop{
             if let Token::Name(value) = &self.current{
                 if step == 0 && !is_nemonic(&value){
                     name = Some(value.clone());
                     step = 1;
+                }if step == 2 && (value.eq_ignore_ascii_case("sprite") || value.eq_ignore_ascii_case("commands")){
+                    subtype = Some(value.clone());
+                    step = 3;
+                }
+            }else if let Token::Dot = &self.current{
+                if step == 1{
+                    step = 2;
                 }
             }else if let Token::Colon = &self.current{
-                if step == 1{
-                    return Expression::Subroutine(name.unwrap());
+                if step == 3{
+                    return Expression::Subroutine{ name: name.unwrap(), subtype: subtype.unwrap() };
                 }
             }else if let Token::None = self.current{
                 break;

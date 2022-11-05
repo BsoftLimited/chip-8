@@ -3,7 +3,7 @@
 pub enum Token{
 	Name(String), String(String), Number(String), Boolean(String), Conditional(String), 
 	ForwardSlash, OpenSquareBracket, ClosingSquareBracket, Term(char), Factor(char),
-	OpenCurlyBracket, ClosingCurlyBracket, OpenBracket, ClosingBracket, Colon, SemiColon, Coma, Equal, None}
+	OpenCurlyBracket, ClosingCurlyBracket, OpenBracket, ClosingBracket, Colon, SemiColon, Coma, Equal, Dot, None}
 
 pub struct Lexer{ index:usize, current:char, data: String }
 impl Lexer{
@@ -50,8 +50,8 @@ impl Lexer{
 			'*' => return Ok(Token::Factor(self.pop())),
 			'+' => return Ok(Token::Term(self.pop())),
 			'-' => return Ok(Token::Term(self.pop())),
-
 			'=' => { self.pop(); return Ok(Token::Equal); },
+			'.' => { self.pop(); return Ok(Token::Dot); },
 			'"' => return self.get_string_token(),
 			__  => return Result::Err(format!("unexpected token {} encountered", self.pop()))
 		}
