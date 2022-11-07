@@ -1,6 +1,9 @@
 mod lexer;
 pub use lexer::{ Lexer, Token};
 
+mod character;
+pub use character::Character;
+
 pub fn fontset()->[u8; 180]{
     return [
         0xf0, 0x90, 0x90, 0x90, 0xf0,   // 0
@@ -71,3 +74,4 @@ pub fn from_hex(numb: &str)->u16{
     }
     return numb.parse().unwrap(); 
 }
+

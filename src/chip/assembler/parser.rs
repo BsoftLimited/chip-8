@@ -20,7 +20,7 @@ fn v_value(code: &str)->u16{
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 pub enum Expression{
     Opcode(u16), Jump{ nemode: u16, address: String}, Subroutine{ subtype: String, name :String}, Sprite(Vec<u16>), None
 }
@@ -87,9 +87,13 @@ impl Parser{
 
     fn init_sprite(&mut self)->Expression{
         let mut init: Vec<u16> = Vec::new();
-        while let Token::Number(value) = &self.current{
-            init.push(from_hex(value));
-            self.next_token();
+        while !matches!(self.current, Token::None){
+            if let Token::Number(value) = &self.current{
+                init.push(from_hex(value));
+                self.next_token();
+            }else if let Token::SemiColon = self.current{
+                break;
+            }
         }
         return Expression::Sprite(init);
     }
@@ -112,6 +116,8 @@ impl Parser{
             }else if let Token::Colon = &self.current{
                 if step == 3{
                     return Expression::Subroutine{ name: name.unwrap(), subtype: subtype.unwrap() };
+                }else if step == 1 && name.as_ref().unwrap().eq_ignore_ascii_case("start"){
+                    return Expression::Subroutine{ name: name.unwrap(), subtype: "commands".to_owned() };
                 }
             }else if let Token::None = self.current{
                 break;
@@ -328,6 +334,10 @@ impl Parser{
                             if step == 1{
                                 let init:u16 = from_hex(value);
                                 return Expression::Opcode(0xa000 | init);
+                            }
+                        }else if let Token::Name(name) = &self.current{
+                            if step == 1{
+                                return Expression::Jump{ nemode:0xa000, address: name.clone() };
                             }
                         }
                     }   

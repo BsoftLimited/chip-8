@@ -1,3 +1,5 @@
+use crate::chip::utils::Character;
+
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
 pub enum Token{
@@ -5,18 +7,18 @@ pub enum Token{
 	ForwardSlash, OpenSquareBracket, ClosingSquareBracket, Term(char), Factor(char),
 	OpenCurlyBracket, ClosingCurlyBracket, OpenBracket, ClosingBracket, Colon, SemiColon, Coma, Equal, Dot, None}
 
-pub struct Lexer{ index:usize, current:char, data: String, to_newline: bool }
+pub struct Lexer{ index:usize, current:Character, data: String, to_newline: bool }
 impl Lexer{
     pub fn new(data:&str)->Self{
         let string = String::from(data);
-        let init = string.chars().nth(0).unwrap();
+        let init = Character::new(string.chars().nth(0).unwrap());
         Lexer{ index:0, current:init, data: string, to_newline: false }
     }
     
     pub fn has_next(&mut self)->bool{
         while self.index < self.data.len(){
-            self.current = self.data.chars().nth(self.index).unwrap();
-			if self.to_newline && self.current == '\n'{
+            self.current = Character::new(self.data.chars().nth(self.index).unwrap());
+			if self.to_newline && self.current.unwrap() == '\n'{
 				self.to_newline = false;
 			}else if !self.to_newline && !self.current.is_whitespace(){
 				return true; 
@@ -40,7 +42,7 @@ impl Lexer{
 		if self.current.is_numeric(){
 			return self.get_number_token();
 		}
-		match self.current{
+		match self.current.unwrap(){
 			'{' => { self.pop(); return Ok(Token::OpenCurlyBracket); }
 			'}' => { self.pop(); return Ok(Token::ClosingCurlyBracket); }
 			'[' => { self.pop(); return Ok(Token::OpenSquareBracket); }
@@ -75,9 +77,9 @@ impl Lexer{
 	fn get_name_token(&mut self)->Result<Token, String>{
 		let mut builder = String::new();
 		while self.index < self.data.len(){
-            self.current = self.data.chars().nth(self.index).unwrap();
-            let passable = !self.current.is_alphanumeric() || (self.current == ',');
-            if passable { break; }else { builder.push(self.current); }
+            self.current = Character::new(self.data.chars().nth(self.index).unwrap());
+            let passable = !self.current.is_alphanumeric();
+            if passable { break; }else { builder.push(self.current.unwrap()); }
             self.index += 1;
         }
 
@@ -90,9 +92,9 @@ impl Lexer{
 	fn get_number_token(&mut self)->Result<Token, String>{
 		let mut builder = String::new();
 		while self.index < self.data.len(){
-            self.current = self.data.chars().nth(self.index).unwrap();
-            let important = !self.current.is_ascii_whitespace() && (self.current.is_ascii_hexdigit() || (self.current != ',') || (self.current == 'x'));
-            if important { builder.push(self.current); } else { break; };
+            self.current = Character::new(self.data.chars().nth(self.index).unwrap());
+            let important = !self.current.is_whitespace() && self.current.is_hexdigit();
+            if important { builder.push(self.current.unwrap()); } else { break; };
             self.index += 1;
         }
 		return Ok(Token::Number(builder));

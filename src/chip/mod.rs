@@ -70,7 +70,8 @@ impl Chip{
                     if let Err(error) = file.read_to_string(&mut data){
                         panic!("{}", error);
                     }
-                    let mut assembler = Assemblier::new(data.as_ref());
+                    let mut assembler = Assemblier::new();
+                    assembler.init(data.as_ref());
                     init = assembler.run();
                 }
                 self.memory.load(init.as_ref());
