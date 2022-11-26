@@ -1,8 +1,6 @@
 use crate::chip::compiler::syntax::is_datatype;
 use crate::chip::compiler::syntax::is_keyword;
-use crate::chip::utils::Token;
-use crate::chip::utils::Lexer;
-//use crate::compiler::syntax::{ is_keyword, is_datatype };
+use crate::chip::utils::{ Token, Lexer, TokenType};
 
 #[derive(Debug)]
 pub enum Expression{
@@ -16,13 +14,13 @@ pub enum Expression{
     FunctionCall{name: String, args: Vec<Expression>}, None }
 
 fn variant_equal(a: &Token, b: &Token)->bool{
-    return std::mem::discriminant(a) == std::mem::discriminant(b);
+    return std::mem::discriminant(&a.tokentype()) == std::mem::discriminant(&b.tokentype());
 }
 
 pub struct Parser{ lexer:Box<Lexer>, errors: Vec<String> , current: Token }
 impl Parser{
     pub fn new(data:&str)->Self{
-        let mut parser = Parser{ lexer: Box::new(Lexer::new(data)), errors: Vec::new() , current: Token::None };
+        let mut parser = Parser{ lexer: Box::new(Lexer::new(data)), errors: Vec::new() , current: Token::none() };
         parser.next_token();
         return parser;
     }
@@ -39,7 +37,7 @@ impl Parser{
                 }
             }
         }
-        self.current = Token::None;
+        self.current = Token::none();
         return false;
     }
 
@@ -49,19 +47,19 @@ impl Parser{
         return init;
     }
 
-    fn unwrap(token:Token)->String{
+    fn unwrap(token:&Token)->String{
         let mut init = String::new();
-        if let Token::Name(value) = token{
-            init = value;
-        }else if let Token::String(value) = token{
-            init = value;
+        if let TokenType::Name(value) = token.tokentype(){
+            init = value.clone();
+        }else if let TokenType::String(value) = token.tokentype(){
+            init = value.clone();
         } 
         init
     }
 
     pub fn get_next(&mut self)->Expression{
-        while !matches!(self.current, Token::None){
-            if let Token::Name(name) = &self.current{
+        while !matches!(self.current.tokentype(), TokenType::None){
+            if let TokenType::Name(name) = self.current.tokentype(){
                 match name.as_str(){
                     "let" => return self.initilaization(),
                     "fun" => return self.function_declaraton(),
@@ -76,15 +74,15 @@ impl Parser{
 
     fn get(&mut self)->Expression{
         let init = self.pop_token();
-        if let Token::OpenBracket = self.current{
+        if let TokenType::OpenBracket = self.current.tokentype(){
             self.pop_token();
-            return Expression::FunctionCall{ name: Parser::unwrap(init), args: self.get_argument_passing() };
-        }else if let Token::Equal = self.current{
+            return Expression::FunctionCall{ name: Parser::unwrap(&init), args: self.get_argument_passing() };
+        }else if let TokenType::Equal = self.current.tokentype(){
             self.pop_token();
-            return Expression::Assignment{ variable: Parser::unwrap(init), exp: Box::new(self.make_conditional()) };
+            return Expression::Assignment{ variable: Parser::unwrap(&init), exp: Box::new(self.make_conditional()) };
         }
 
-        if !matches!(self.current, Token::SemiColon){
+        if !matches!(self.current.tokentype(), TokenType::SemiColon){
             self.errors.push(format!("expected a semi colon ';'"));
         }
         return Expression::None;
@@ -96,7 +94,7 @@ impl Parser{
         let mut step: u8 = 0;
 
         while self.next_token(){
-            if let Token::Name(value) = &self.current {
+            if let TokenType::Name(value) = self.current.tokentype() {
                 if is_keyword(value.as_str()) && step == 0{
                     self.errors.push(format!("the word: {} is a reserve word expecting a {}", value, if step == 0 { "name" } else { "Data type" }));
                 }else if  name.is_none() && step == 0 {
@@ -106,20 +104,20 @@ impl Parser{
                     data_type = Option::from(value.clone());
                     step = 3;
                 }
-            }else if let Token::Colon = &self.current {
+            }else if let TokenType::Colon = self.current.tokentype() {
                 if step == 1{
                     step = 2;
                 }
-            }else if let Token::Equal = &self.current {
+            }else if let TokenType::Equal = &self.current.tokentype(){
                 if step == 3{
                     self.next_token();
                     let value = Some(Box::new(self.make_conditional()));
-                    if matches!(self.current, Token::SemiColon){
+                    if matches!(self.current.tokentype(), TokenType::SemiColon){
                         self.next_token();
                         return Expression::Variable{ name: name.unwrap(), dt: data_type.unwrap(), value };
                     }
                 }
-            }else if let Token::SemiColon = &self.current {
+            }else if let TokenType::SemiColon = self.current.tokentype() {
                 if step == 3 {
                     self.next_token();
                     return Expression::Variable{ name: name.unwrap(), dt: data_type.unwrap(), value: None};
@@ -130,26 +128,26 @@ impl Parser{
     }
 
     fn get_argument_definition(&mut self)->Expression{
-        let name: String = Parser::unwrap(self.current.clone());
+        let name: String = Parser::unwrap(&self.current);
         let mut dt: Option<String> = None;
         let mut value: Option<Box<Expression>> = None;
         let mut step: u8 = 0;
         while self.next_token(){
-            if let Token::Name(value) = &self.current{
+            if let TokenType::Name(value) = self.current.tokentype(){
                 if dt.is_none() && is_datatype(value.as_str()) && step == 1{
                     dt = Option::from(value.clone());
                     step = 2;
                 }else if is_keyword(value.as_str()){
                     self.errors.push(format!("the word: {} is a reserve word expecting a {}", value, if step == 0 { "name" } else { "Data type" }));
                 }
-            }else if let Token::Colon = self.current{
+            }else if let TokenType::Colon = self.current.tokentype(){
                 if step == 0{ step = 1; }
-            }else if let Token::Equal = self.current{
+            }else if let TokenType::Equal = self.current.tokentype(){
                 if step == 2{
                     value = Some(Box::new(self.make_conditional()));
                     step = 3;
                 }
-            }else if matches!(self.current, Token::Coma) || matches!(self.current, Token::ClosingBracket){
+            }else if matches!(self.current.tokentype(), TokenType::Coma) || matches!(self.current.tokentype(), TokenType::ClosingBracket){
                 if step == 2 || step == 3{
                     return Expression::ArgumentDefinition{ name, dt: dt.as_ref().unwrap().clone(), value };
                 }
@@ -166,7 +164,7 @@ impl Parser{
         let mut step = 0;
 
         while self.next_token(){
-            if let Token::Name(value) = &self.current {
+            if let TokenType::Name(value) = self.current.tokentype() {
                 if step == 0 && is_keyword(value.as_str()){
                     self.errors.push(format!("the word: {} is a reserve word expecting a {}", value, if step == 0 { "name" } else { "Data type" }));
                 }else if  step == 0 && name.is_none() {
@@ -178,19 +176,19 @@ impl Parser{
                 }else if step == 2{
                     args.push(self.get_argument_definition());
                 }
-            }else if let Token::OpenBracket = self.current {
+            }else if let TokenType::OpenBracket = self.current.tokentype() {
                 if step == 1{ step = 2; }
-            }else if let Token::ClosingBracket = self.current {
+            }else if let TokenType::ClosingBracket = self.current.tokentype() {
                 if step == 2{ step = 3; }
-            }else if let Token::Colon = self.current {
+            }else if let TokenType::Colon = self.current.tokentype() {
                 if step == 3{ step = 4; }
-            }else if let Token::OpenCurlyBracket = self.current {
+            }else if let TokenType::OpenCurlyBracket = self.current.tokentype() {
                 if step == 3 || step == 5{
                     self.next_token();
-                    while !(matches!(self.current, Token::ClosingCurlyBracket) || matches!(self.current, Token::None)){
+                    while !(matches!(self.current.tokentype(), TokenType::ClosingCurlyBracket) || matches!(self.current.tokentype(), TokenType::None)){
                         body.push(self.get_next());
                     }
-                    if let Token::None = self.current {
+                    if let TokenType::None = self.current.tokentype() {
                         self.errors.push(format!("Unexpected end of tokens expecting a closing bracket ')'"));
                     }
                     return Expression::FunctionDefinition{ name:name.unwrap(), args, rtype, body };
@@ -205,16 +203,16 @@ impl Parser{
         let mut name: Option<String> = None;
         let mut step = 0;
         loop{
-            if matches!(self.current, Token::Name(_)) || matches!(self.current, Token::Colon) || matches!(self.current, Token::Coma){
+            if matches!(self.current.tokentype(), TokenType::Name(_)) || matches!(self.current.tokentype(), TokenType::Colon) || matches!(self.current.tokentype(), TokenType::Coma){
                 let token = self.pop_token();
-                if let Token::SemiColon = &token{
+                if let TokenType::SemiColon = token.tokentype(){
                     if name.is_some() && step == 1{
                         args.push( Expression::ArgumentPassing{ name: name.as_ref().unwrap().clone(), value: Box::new(self.make_conditional())});
                         step = 2;
                     }else{
                         self.errors.push(format!("Unexpected column expecting an argument"));
                     }
-                }else if let Token::Coma = &token{
+                }else if let TokenType::Coma = token.tokentype(){
                     if step == 1 {
                         if name.is_some(){
                             self.errors.push(format!("Unexpected token: {:?} exprcting colon(:)", self.current));    
@@ -222,11 +220,11 @@ impl Parser{
                     }
                     name = None;
                     step = 0;
-                }else if let Token::Name(value) = &token{
+                }else if let TokenType::Name(value) = token.tokentype(){
                     if name.is_some() && step == 1{
                         self.errors.push(format!("Unexpected token: {:?} expecting a column(:)", &name));
                     }else if step == 0{
-                        if is_keyword(value){
+                        if is_keyword(value.as_str()){
                             self.errors.push(format!("the word: {} is a reserve word", value));
                         }else{
                             name = Some(value.clone());
@@ -234,7 +232,7 @@ impl Parser{
                         }
                     } 
                 }
-            } else if matches!(self.current, Token::ClosingBracket) || matches!(self.current, Token::None){
+            } else if matches!(self.current.tokentype(), TokenType::ClosingBracket) || matches!(self.current.tokentype(), TokenType::None){
                 self.next_token();
                 break;
             } else{
@@ -247,7 +245,7 @@ impl Parser{
 
     pub fn make_conditional(&mut self)->Expression{
         let left = self.make_term();
-        if let Token::Conditional(op) = self.current.clone(){
+        if let TokenType::Conditional(op) = self.current.tokentype().clone(){
             self.next_token();
             return Expression::Binary{ left: Box::new(left), op: op.clone(), right: Box::new(self.make_conditional()) }
         }
@@ -256,34 +254,34 @@ impl Parser{
 
     pub fn make_term(&mut self)->Expression{
         let left = self.make_factor();
-        if let Token::Term(op) = self.current{
+        if let TokenType::Term(op) = self.current.tokentype().clone(){
             self.next_token();
-            return Expression::Binary{ left: Box::new(left), op: String::from(op), right: Box::new(self.make_conditional()) }
+            return Expression::Binary{ left: Box::new(left), op: String::from(op.clone()), right: Box::new(self.make_conditional()) }
         }
         return left;
     }
 
     pub fn make_factor(&mut self)->Expression{
         let left = self.make_value();
-        if let Token::Factor(op) = self.current{
+        if let TokenType::Factor(op) = self.current.tokentype().clone(){
             self.next_token();
-            return Expression::Binary{ left: Box::new(left), op: String::from(op), right: Box::new(self.make_conditional()) }
+            return Expression::Binary{ left: Box::new(left), op: String::from(op.clone()), right: Box::new(self.make_conditional()) }
         }
         return left;
     }
 
     fn make_value(&mut self)->Expression{
-        while !matches!(self.current, Token::None){
-            if matches!(self.current, Token::String(_)) || matches!(self.current, Token::Boolean(_)) || matches!(self.current, Token::Number(_)){
+        while !matches!(self.current.tokentype(), TokenType::None){
+            if matches!(self.current.tokentype(), TokenType::String(_)) || matches!(self.current.tokentype(), TokenType::Boolean(_)) || matches!(self.current.tokentype(), TokenType::Number(_)){
                 let init = self.pop_token();
-                if let Token::String(value) = &init{
+                if let TokenType::String(value) = init.tokentype(){
                     return Expression::String(value.clone());
-                }else if let Token::Boolean(value) = &init{
+                }else if let TokenType::Boolean(value) = init.tokentype(){
                     return Expression::Boolean(value.clone());
-                }else if let Token::Number(value) = &init{
-                    return Expression::Number(value.parse().unwrap());
+                }else if let TokenType::Number(value) = init.tokentype(){
+                    return Expression::Number(value.clone() as f32);
                 }
-            }else if matches!(self.current, Token::OpenSquareBracket){
+            }else if matches!(self.current.tokentype(), TokenType::OpenSquareBracket){
                 self.next_token();
                 return self.make_array();
             }else{
@@ -297,12 +295,12 @@ impl Parser{
     fn make_array(&mut self)->Expression{
         let mut array = Vec::new();
 
-        while !matches!(self.current, Token::None) && !matches!(self.current, Token::ClosingSquareBracket){
+        while !matches!(self.current.tokentype(), TokenType::None) && !matches!(self.current.tokentype(), TokenType::ClosingSquareBracket){
             array.push(self.make_value());
-            if matches!(self.current, Token::ClosingSquareBracket){
+            if matches!(self.current.tokentype(), TokenType::ClosingSquareBracket){
                 self.next_token();
                 break;
-            } if matches!(self.current, Token::Coma){
+            } if matches!(self.current.tokentype(), TokenType::Coma){
                 self.next_token();
             }else{
                 self.errors.push(format!("Unexpected token: {:?}, expected coma(,) or closing square bracket(])", self.current));

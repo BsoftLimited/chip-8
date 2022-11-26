@@ -1,8 +1,14 @@
 mod lexer;
-pub use lexer::{ Lexer, Token};
+pub use lexer::Lexer;
 
 mod character;
 pub use character::Character;
+
+mod position;
+pub use position::Position;
+
+mod token;
+pub use token::{ Token, TokenType };
 
 pub fn fontset()->[u8; 180]{
     return [
@@ -57,7 +63,7 @@ pub fn hex(value: u16)->String{
 }
 
 pub fn from_hex(numb: &str)->u16{
-    if numb.contains("0x") || numb.contains("0b"){
+    if numb.starts_with("0x") || numb.starts_with("0b"){
         let mut number: u16 = 0;
         for i in 2..numb.len(){
             let mut value = numb.chars().nth(i).unwrap() as u16;

@@ -1,8 +1,5 @@
 mod parser;
 use std::collections::HashMap;
-use std::iter::Map;
-use crate::chip::utils::hex;
-use crate::chip::Opcode;
 use crate::chip::assembler::parser::{Parser, Expression};
 
 struct Sub{ name: String, subtype:String }
@@ -13,24 +10,39 @@ impl Assemblier{
         Assemblier{ map: HashMap::new() }
     }
 
-    pub fn init(&mut self, data: &str){
+    pub fn init(&mut self, data: &str)->Vec<String>{
+        self.map.clear();
         let mut parser = Parser::new(data);
 
         let mut sub: Option<Sub> = None;
         let mut codes: Vec<Expression> = Vec::new();
-
-        while parser.next_token(){
-            let init = parser.get_next();
-            if (matches!(init, Expression::Jump{ nemode:_ , address:_ }) || matches!(init, Expression::Opcode(_))) && sub.is_some() && sub.as_ref().unwrap().subtype.eq_ignore_ascii_case("commands"){
-                codes.push(init);
-            }else if matches!(init, Expression::Sprite(_)) && sub.is_some() && sub.as_ref().unwrap().subtype.eq_ignore_ascii_case("sprite"){
-                codes.push(init);
-            }else if let Expression::Subroutine{name, subtype} = init{
-                self.insert(&mut sub, &mut codes);
-                sub = Some(Sub{name, subtype});
+        let mut errors: Vec<String> = Vec::new();
+        loop{
+            match parser.next_token(){
+                Err(error) => errors.push(error),
+                Ok(has_next) =>{
+                    if has_next{
+                        match parser.get_next(){
+                            Err(error) => errors.push(error),
+                            Ok(init) =>{
+                                if (matches!(init, Expression::Jump{ nemode:_ , address:_ }) || matches!(init, Expression::Opcode(_))) && sub.is_some() && sub.as_ref().unwrap().subtype.eq_ignore_ascii_case("commands"){
+                                    codes.push(init);
+                                }else if matches!(init, Expression::Sprite(_)) && sub.is_some() && sub.as_ref().unwrap().subtype.eq_ignore_ascii_case("sprite"){
+                                    codes.push(init);
+                                }else if let Expression::Subroutine{name, subtype} = init{
+                                    self.insert(&mut sub, &mut codes);
+                                    sub = Some(Sub{name, subtype});
+                                }
+                            }
+                        }
+                    }else{
+                        break;
+                    }
+                }
             }
         }
         self.insert(&mut sub, &mut codes);
+        return errors;
     }
 
     fn insert(&mut self, sub: &mut Option<Sub>, codes: &mut Vec<Expression>){
@@ -40,7 +52,7 @@ impl Assemblier{
         }
     }
 
-    pub fn run(&mut self)->Vec<u8>{
+    pub fn run(&mut self)->Result<&[u8], String>{
         let mut codes:Vec<u8> = Vec::new();
         let mut addresses: Vec<(String, u16)> = Vec::new();
 
@@ -52,6 +64,8 @@ impl Assemblier{
                 if self.map[address].0.eq_ignore_ascii_case("sprite"){
                     if let Expression::Sprite(sprite) = &self.map[address].1[0]{
                         current += sprite.len() as u16;
+                    }else{
+                        return Err(format!("expecting sprite numbers after {} but found opcodes", address));
                     }
                 }else if self.map[address].0.eq_ignore_ascii_case("commands"){
                     current += self.map[address].1.len() as u16 * 2;
@@ -72,7 +86,7 @@ impl Assemblier{
             println!("{}: {}", hex(0x200 + index as u16), hex(codes[index] as u16));
             index += 1;
         }*/
-        return codes;
+        return Ok(codes.as_ref());
     }
 
     fn process(&mut self, addr: &str, codes: &mut Vec<u8>, addresses: &[(String, u16)] ){

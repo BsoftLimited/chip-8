@@ -48,29 +48,6 @@ impl Screen{
         }
     }
 
-    // Function that draw in Xor mode
-    /*pub fn draw(&mut self, x: u16, y: u16, height: u16, sprite:Vec<u16>)->u8{
-        let mut vf: u8 = 0;
-        let (mut xi, mut yi) : (u16, u16);
-
-        for yline in 0..height{
-            yi = y + yline;
-            for i in 0..8{
-                xi = x + i;
-                if (sprite[yline as usize] & (0x80 >> i)) != 0{
-                    let init = 1 + (if self.extended { 1 } else { 0 });
-                    if xi < 64 * init && yi < 32 * init{
-                        if self.pixels[yi as usize][xi as usize] && vf == 0{
-                            vf = 1;                   
-                        }
-                        self.pixels[yi as usize][xi as usize] ^= true;
-                    }
-                }
-            }
-        }
-        return vf;
-    }*/
-
     pub fn draw(&mut self, x: u16, y: u16, sprite:Vec<u16>)->u8{
         let mut vf = 0;
         for yline in 0..sprite.len(){
